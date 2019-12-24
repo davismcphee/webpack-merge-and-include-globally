@@ -82,6 +82,36 @@ describe('MergeIntoFile', () => {
     });
   });
 
+  it('should succeed merging using mock content with transformFile', (done) => {
+    const instance = new MergeIntoSingle({
+      files: {
+        'script.js': [
+          'file1.js',
+          'file2.js',
+        ],
+        'style.css': [
+          '*.css',
+        ],
+      },
+      transformFile: {
+        'script.js': val => val.replace(/[0-9]/g, match => Number(match) + 1),
+      },
+    });
+    instance.apply({
+      plugin: (event, fun) => {
+        const obj = {
+          assets: {},
+        };
+        fun(obj, (err) => {
+          expect(err).toEqual(undefined);
+          expect(obj.assets['script.js'].source()).toEqual('FILE_2_TEXT\nFILE_3_TEXT');
+          expect(obj.assets['style.css'].source()).toEqual('FILE_3_TEXT\nFILE_4_TEXT');
+          done();
+        });
+      },
+    });
+  });
+
   it('should succeed merging using mock content by using array instead of object', (done) => {
     const instance = new MergeIntoSingle({
       files: [

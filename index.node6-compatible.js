@@ -59,14 +59,15 @@ class MergeIntoFile {
   }
 
   run(compilation, callback) {
-    const { files, transform, encoding, hash } = this.options;
+    const { files, transform, transformFile, encoding, hash } = this.options;
     const generatedFiles = {};
     let filesCanonical = [];
     if (!Array.isArray(files)) {
       Object.keys(files).forEach(newFile => {
         filesCanonical.push({
           src: files[newFile],
-          dest: newFile
+          dest: newFile,
+          fileName: newFile
         });
       });
     } else {
@@ -87,7 +88,10 @@ class MergeIntoFile {
         }));
         const flattenedList = Array.prototype.concat.apply([], listOfLists);
         const filesContentPromises = flattenedList.map(function (path) {
-          return readFile(path, encoding || 'utf-8');
+          const fileContentPromise = readFile(path, encoding || 'utf-8');
+          return transformFile && transformFile[fileTransform.fileName] ? fileContentPromise.then(function (code) {
+            return transformFile[fileTransform.fileName](code, path);
+          }) : fileContentPromise;
         });
         const content = yield joinContent(filesContentPromises, '\n');
         const resultsFiles = yield fileTransform.dest(content);

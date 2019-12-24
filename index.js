@@ -40,7 +40,7 @@ class MergeIntoFile {
   }
 
   run(compilation, callback) {
-    const { files, transform, encoding, hash } = this.options;
+    const { files, transform, transformFile, encoding, hash } = this.options;
     const generatedFiles = {};
     let filesCanonical = [];
     if (!Array.isArray(files)) {
@@ -48,6 +48,7 @@ class MergeIntoFile {
         filesCanonical.push({
           src: files[newFile],
           dest: newFile,
+          fileName: newFile
         });
       });
     } else {
@@ -66,7 +67,12 @@ class MergeIntoFile {
     const finalPromises = filesCanonical.map(async (fileTransform) => {
       const listOfLists = await Promise.all(fileTransform.src.map(path => listFiles(path, null)));
       const flattenedList = Array.prototype.concat.apply([], listOfLists);
-      const filesContentPromises = flattenedList.map(path => readFile(path, encoding || 'utf-8'));
+      const filesContentPromises = flattenedList.map(path => {
+        const fileContentPromise = readFile(path, encoding || 'utf-8');
+        return transformFile && transformFile[fileTransform.fileName]
+          ? fileContentPromise.then(code => transformFile[fileTransform.fileName](code, path))
+          : fileContentPromise;
+      });
       const content = await joinContent(filesContentPromises, '\n');
       const resultsFiles = await fileTransform.dest(content);
       Object.keys(resultsFiles).forEach((newFileName) => {
